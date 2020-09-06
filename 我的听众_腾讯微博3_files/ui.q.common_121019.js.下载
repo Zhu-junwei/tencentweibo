@@ -1,0 +1,170 @@
+var __slice = Array.prototype.slice;
+var trace = trace || function() {
+	var s = location.search || '';
+	if (s.match('trace=1')){
+		try{
+			var a;
+			a = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+			return trace.apply(console, a);
+		}catch(e){}
+	}
+},
+
+dumpError = dumpError || function(err) {
+	var o = [];
+	if (typeof err === 'object') {
+		if (err.message) {
+			o.push('Message: ' + err.message)
+		}
+		if (err.stack) {
+			o.push('Stacktrace:')
+			o.push('====================')
+			o.push(err.stack);
+		}
+	} else {
+		o.push('dumpError :: argument is not an object');
+	}
+	
+	return o.join('\n');
+};
+
+
+
+var SMustache = SMustache || new function(){
+	var me = this;
+	
+	/********************************************************
+	
+	Simple Mustache
+	by timo.leonard
+	
+	---------------------------------------------------------
+	
+	Usage
+	Below is quick example how to use mustache.js:
+	
+	var view = {
+		title: "Joe",
+		calc: function() {
+			return 2 + 4;
+		}
+	};
+	var html = SMustache.to_html("{{title}} spends {{calc}}", view);
+	
+	/********************************************************/
+	
+	me.to_html = function (str, obj){
+		return str.replace(/\{\{(.*?)\}\}/g,function(e,g){
+			var s = eval('obj["'+ g.split('.').join('"]["') + '"]');//  obj[g];
+			if (s != null){
+				if (typeof s === 'function'){
+					try{
+						return s(obj);
+					}catch(err){
+						return e + ':' + err;
+					}
+				}
+				
+				return s;
+			}else{
+				return e;
+			}
+			
+		});
+	};
+};
+
+
+var EventsHub = EventsHub || function(obj){
+	var self = {
+		//---------------------------------------------------------
+		bind: function(name, fn) {
+			self.unbind(name);
+			self.listen(name, '0', fn);
+		},
+		
+		//---------------------------------------------------------
+		unbind: function(name){
+			self[name] = null;
+			delete self[name];
+		},
+		
+		//---------------------------------------------------------
+		listen: function(name, sub, fn) {
+			if (!name) return;
+			if (!self[name]) self[name] = {};
+			
+			// 3 params
+			if (fn){
+				self[name][sub] = fn;
+			// 2 params
+			}else {
+				self[name][(new Date()).getTime()] = sub;
+			}
+		},
+		
+		//---------------------------------------------------------
+		listen_obj: function(obj){
+			if ((obj) && (typeof obj == "object")){
+				for (var i in obj){
+					self.listen(i, obj[i]);
+				}
+			}
+		},
+		
+		//---------------------------------------------------------
+		dispatch_all: function(eventData){
+			try{
+				for (var i=0; i<eventData.length; i++ ){
+					self.dispatch(eventData[i]);
+				}
+			}catch(e){trace(e)}
+		},
+		
+		//---------------------------------------------------------
+		// exec an event
+		exec: function(name, params) {
+			try {
+				var p = params || [];
+				if (self[name]) {
+					//if (self.on_dispatch) self.on_dispatch(name, p);
+					var s = self[name];
+					for (var fn in s) {
+						//trace('-----------------------------', fn, self[name][fn]);
+						s[fn] && s[fn].apply(this, p);
+					}
+				}
+			}catch(e){trace(e)}
+		},
+		
+		//---------------------------------------------------------
+		/// polymorphic interface
+		dispatch: function(eventData, params) {
+			// dispatch('event_name', [a, b, c])
+			if (typeof eventData == "string") {
+				var eventName = eventData;
+				self.exec(eventName, params);
+				return;
+				
+			// dispatch({'event_name': {...}})
+			}else if ((typeof eventData == "object") || (typeof eventData == "array")) {
+				for (var eventName in eventData) {
+					self.exec(eventName, eventData[eventName]);
+				}
+				return;
+			}else{
+				trace("can not dispatch "+eventData);
+			}
+		}
+	};
+	
+	return self;
+};
+
+	// 像素 字符串10px 转为 数字10
+var pxToInt = function(w){
+		return (typeof w === 'string') ? 
+			parseInt(w.replace('px', '')) : w;
+	};
+
+/*  |xGv00|29b70dd2dd56a91ce074e2141c5e2701 */

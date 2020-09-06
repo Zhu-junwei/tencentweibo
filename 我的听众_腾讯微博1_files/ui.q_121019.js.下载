@@ -1,0 +1,172 @@
+(function(){
+		window.UI = window.UI || {};
+		var __slice = Array.prototype.slice,
+			idSelectorRE = /^#([\w-]+)$/,
+			//classSelectorRE = /^\.([\w-]+)$/,
+			//tagSelectorRE = /^[\w-]+$/,
+			rear
+		;
+
+		// -----------------------------------------------
+		// Copy UI methods on delegate chain, 
+		// and re-generate it as chain style
+		// -----------------------------------------------
+		// original:
+		// UI.each(UI.GC('.item1'), function(node, index){
+		//   UI.EA(none, 'click', function(){
+		//	 alert('fuck');
+		//   });
+		// })
+		//
+		// UI.each(UI.GC('.item2'), function(node, index){
+		//   UI.addClass(node, 'fuck');
+		// })
+		// 
+		// UI.each(UI.GC('.item3'), function(node, index){
+		//   UI.A(node, 'fuck', 'mother');
+		//   UI.A(node, 'rape', 'sister');
+		//   UI.addClass(node, 'fuck');
+		//   node.style.width = 100 + 'px';
+		// })
+		//
+		// var p = UI.parent(UI.GC('.container')[0]);
+		// UI.addClass(p, 'parent');
+		// UI.show(p);
+		// -----------------------------------------------
+		// new style:
+		// UI.q('.item1')
+		//   .EA('click', function(){alert('fuck')});
+		//
+		// UI.q('.item3').addClass('fuck')	
+		//
+		// UI.q('.item3')
+		//	.attrs({fuck: 'mother', rape: 'sister'})
+		//	.addClass('fuck')
+		//	.style('width', 100 + 'px');
+		//
+		// UI.q('.container').q_parent().addClass('parent').show();
+		// -----------------------------------------------
+
+		var delegate_chain = function(targets){
+			var UI_delegate = function(){
+				var a;
+					a = 1 <= arguments.length ? __slice.call(arguments, 0) : [],
+					fn = a.shift(),
+					result = [];
+				try {
+					for (var i=0,len = targets.length; i<len; i++) {
+						// console.log('UI.'+fn+':', UI[fn], 'params:',[targets[i]].concat(a));
+						var rt = UI[fn].apply(UI, [targets[i]].concat(a));
+						result.push(rt);
+					}
+				} catch (e) {
+					window.trace && trace('Error: ', window.dumpError && dumpError(e));
+				}
+				
+				return result[0] || UI_delegate;
+			};
+			
+			// UI methods table
+			// must ensure these function name on the UI object
+			var ui_method = ['show', 'hide', 'addClass', 'removeClass', 'hasClass', 'append', 'remove', 'parent', 'each', 'EA', 'ER', 'A', 'animate',
+				// style attr are custom methods
+				'style', 'attrs', 'q_parent'];
+			
+			var add_fn = function(name){
+				UI_delegate[name] = function(){ 
+					return UI_delegate.apply(this, [name].concat(1 <= arguments.length ? __slice.call(arguments, 0) : []) );
+				};
+			};
+			for (var i=0,len = ui_method.length; i<len; i++) {
+				add_fn(ui_method[i]);
+			}
+			
+			// add custom methods
+			UI_delegate.eq = function(dom_index){
+				return	/*if*/(targets.length > 1) ? (
+							/*if*/(dom_index == null) ? (
+								targets
+							)/*then*/: (
+								targets[0] || null
+							)/*endif*/
+						)/*then*/:(
+							targets[0] || null
+						)/*endif*/
+				;
+			};
+			//UI_delegate.on
+			return UI_delegate;
+		};
+		
+		// add custom methods on UI
+		// set attrs
+		UI.attrs = UI.attrs || function(dom, o, value){
+			if (UI.isObject(o)){
+				// set attrs
+				for (var k in o){
+					UI.A(dom, k, o[k]);
+				}
+			}else if (UI.isString(o)){
+				if (value){
+					// set attr
+					UI.A(dom, o, value);
+				}else{
+					// get attr
+					return UI.A(dom, o);
+				}
+			}
+		};
+		
+		UI.q_parent = UI.q_parent || function(dom){
+			return UI.q(UI.parent(dom));
+		};
+		
+		// get/set style
+		UI.style = UI.style || function(dom, o, value){
+			if (UI.isObject(o)){
+				// set styles
+				for (var k in o){
+					dom.style[k] = o[k];
+				}
+			}else if (UI.isString(o)){
+				if (value) {
+					// set style
+					dom.style[o] = value;
+				}else{
+					// get style
+					return dom.style[o];
+				}
+			}
+		};
+		
+		UI.q = UI.q || function(){
+			var targets = [];
+			
+			if (arguments.length == 1){
+				var t = arguments[0];
+				
+				// DOM
+				if (UI.isElement(t)){
+					targets = [t];
+				// selector string
+				}else if (UI.isString(t)){
+					// is id? '#id'
+					if (idSelectorRE.test(t)){
+						targets = [UI.G(t.replace('#',''))];
+					// is class or tag ? '.className'
+					}else{
+						targets = UI.GC(t);
+					}
+				// DOM array
+				}else{
+					targets = arguments[0];
+				}
+			}else if(arguments.length > 1){
+				// get DOM array by className under a DOM node
+				targets = UI.GC(arguments[0], arguments[1]);
+			}
+			
+			return delegate_chain(targets);
+		};
+		
+	})();/*  |xGv00|8fbbc344365e34d7375c1e851b46ca4e */
